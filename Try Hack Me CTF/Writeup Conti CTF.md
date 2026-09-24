@@ -114,7 +114,7 @@ What is the target process image used for getting the system hashes?
 
 **Command / Request Found:** attrib.exe  -r \\\\win-aoqkg2as2q7.bellybear.local\C$\Program Files\Microsoft\Exchange Server\V15\FrontEnd\HttpProxy\owa\auth\i3gfPctK1c2x.aspx
 
-![Executed Cmd Q9](../screenshots/executed%20cmd%20q9.png)
+![Executed cmd Q9](../screenshots/executed%20cmd%20q9.png)
 
 ###### **Q10: What three CVEs did this exploit leverage? Provide the answer in ascending order.**
 
