@@ -1,4 +1,4 @@
-##Writeup Conti CTF
+## Writeup Conti CTF
 ---
 
 
@@ -17,11 +17,11 @@ Incident Investigation Report: Conti Ransomware Analysis.
 
 ## Investigation Summary & Findings
 
-###### **Q1: Can you identify the location of the ransomware?
+###### **Q1: Can you identify the location of the ransomware?**
 
 בשלב הראשוני, הפעלתי את מכונת המעבדה שעליה מותקן שרת ה-Splunk, התחברתי למערכת וביצעתי חיפוש ראשוני במטרה לאתר את הודעת הכופרה (ה-Ransom Note) שהשאירה קבוצת Conti.
 
-![Location Step 1](assets/location%20step1.png)
+![Location Step 1](../screenshots/location%20step1.png)
 
 לאחר שאיתרתי את הודעת הכופרה (`readme.txt`) שנוצרה במערכת, התחלתי לבדוק איזה תהליך אחראי ליצירתו. 
 במטרה לאתר את הנתיב המדויק, ביצעתי חיפוש מתקדם בשפת SPL. סיננתי לפי קוד אירוע **11** (יצירת קובץ) ומיקדתי את טווח הזמנים:
@@ -29,14 +29,14 @@ index=* EventCode=11 *readme.txt*
 
 וכך מצאתי את המיקום על ידי ההצלבה בין קוד 11 (יצירת קובץ) לבין קובץ הreadme.txt.
 הסינון הזה נתן לי את הנתיב שבו נוצר הקובץ: 
-![Location Step 2](assets/location%20step2.png)
+![Location Step 2](../screenshots/location%20step2.png)
 
 
-###### **Q2: What is the Sysmon event ID for the related file creation event?
+###### **Q2: What is the Sysmon event ID for the related file creation event?**
 
 הקוד הוא 11 ליצירת קובץ כפי שתואר קודם
 
-###### **Q3:Can you find the MD5 hash of the ransomware?
+###### **Q3:Can you find the MD5 hash of the ransomware?**
 
 לאחר שגיליתי את מיקום התיקיה בה רצה התוכנה, ביצעתי סינון לקוד 1 של יצירת תהליך (EventCode=1) כדי לגלות את ה-MD5 Hash של הקובץ. 
 הבנתי שאירועי יצירת תהליך הם אלו שמתעדים את הרצת הקובץ בפועל ולכן מכילים את חתימות האבטחה וה-Hashes, בניגוד לאירועי יצירת קובץ רגילים.
@@ -46,10 +46,10 @@ index=* EventCode=11 *readme.txt*
 
 לאחר חיפוש בתוך שדות ה-Event הרלוונטי (תחת שדה ה-Hashes), מצאתי את ה-MD5 Hash של התוכנה הזדונית:
 
-![Hash Q3](assets/hash%20q3.png)
+![Hash Q3](../screenshots/hash%20q3.png)
 
 
-###### **Q4: What file was saved to multiple folder locations?
+###### **Q4: What file was saved to multiple folder locations?**
 
 הבנתי שחיפוש ניחושים עיוור של שמות קבצים אינו מקצועי, ולכן עלי לבצע חיפוש מובנה שמשלב את אירועי יצירת הקבצים יחד עם סינון חכם שיציג את הקבצים הנפוצים ביותר במערכת. 
 
@@ -58,10 +58,10 @@ index=* EventCode=11 *readme.txt*
 לשם כך, הרצתי את החיפוש הבא ב-SPL:
 index=* EventCode=11 | top limit=30 TargetFilename
 
-![Readme Q4](assets/readme%20q4.png)
+![Readme Q4](../screenshots/readme%20q4.png)
 
 
-###### **Q5: What was the command the attacker used to add a new user to the compromised system?
+###### **Q5: What was the command the attacker used to add a new user to the compromised system?**
 
   חיפשתי את הפקודה שיוצרת משתמש (המחרוזת שקשורה ל-`net user`), תוך התמקדות באירועי יצירת תהליך ושורות הפקודה שלהם, לשם כך הרצתי את החיפוש הבא ב-SPL:
 **index=* EventCode=1 *net user**"
@@ -70,18 +70,18 @@ index=* EventCode=11 | top limit=30 TargetFilename
 
 `net user /add securityninja hardToHack123$`
 
-![Net User Q5](assets/net%20user%20q5.png)
+![Net User Q5](../screenshots/net%20user%20q5.png)
 
-###### **Q6: The attacker migrated the process for better persistence. What is the migration target (full image path)?
+###### **Q6: The attacker migrated the process for better persistence. What is the migration target (full image path)?**
 
   הבנתי שפעולת הגירת תהליכים (Process Injection / Migration) מתבצעת כאשר תוקף מעביר קוד או פותח חוט ריצה (Thread) בתוך הזיכרון של תהליך אחר. כדי לאתר פעילות כזו, נעזרתי בטיפ וחיפשתי ב-SPL אירועי **Sysmon Event ID 8 (`CreateRemoteThread`)**, המיועדים בדיוק לתיעוד מנגנונים אלו. בתוך אירועים אלו, התמקדתי בשדה ה-`TargetImage` המציג את התהליך המארח שאליו בוצעה ההזרקה.
 * **ממצאים:** 
   מתוך ניתוח אירועי יצירת ה-Thread מרחוק, איתרתי את הנתיב המלא של התהליך שאליו התוקף ביצע את ההגירה:
 **C:\Windows\System32\wbem\unsecapp.exe**
 
-![Migration Path Q6](assets/migration%20path%20q6.png)
+![Migration Path Q6](../screenshots/migration%20path%20q6.png)
 
-###### **Q7: The attacker also injected into a system process to retrieve the hashes.  
+###### **Q7: The attacker also injected into a system process to retrieve the hashes.**
 What is the target process image used for getting the system hashes?
 
 בהמשך לשאלה הקודמת מדובר על אותו לוג ההתייחסות פה היא לשדה TargetImage 
@@ -89,7 +89,7 @@ What is the target process image used for getting the system hashes?
 **C:\Windows\System32\lsass.exe**
 
 
-###### **Q8: What is the web shell the exploit deployed to the system?
+###### **Q8: What is the web shell the exploit deployed to the system?**
 
   מכיוון ששרתי Exchange חשופים לרשת ומבוססים על שרת האינטרנט IIS, תוקפים נוהגים לשלוח בקשות HTTP מסוג **`POST`** כדי לשתול או להפעיל סקריפטים זדוניים בסביבת השרת. כדי לאתר פעילות זו, היה עלי לחקור את לוגי ה-IIS ב-Splunk בהתמקדות על שיטות POST.
 * **תהליך החיפוש ב-SPL:**
@@ -102,7 +102,7 @@ What is the target process image used for getting the system hashes?
 
 **WebShell File: i3gfPctK1c2x.aspx**
 
-![Web Shell Q8](assets/web%20shell%20q8.png)
+![Web Shell Q8](../screenshots/web%20shell%20q8.png)
 
 ###### **Q9: What is the command line that executed this web shell?**
 
@@ -114,7 +114,7 @@ What is the target process image used for getting the system hashes?
 
 **Command / Request Found:** attrib.exe  -r \\\\win-aoqkg2as2q7.bellybear.local\C$\Program Files\Microsoft\Exchange Server\V15\FrontEnd\HttpProxy\owa\auth\i3gfPctK1c2x.aspx
 
-![Executed Cmd Q9](assets/executed%20cmd%20q9.png)
+![Executed Cmd Q9](../screenshots/executed%20cmd%20q9.png)
 
 ###### **Q10: What three CVEs did this exploit leverage? Provide the answer in ascending order.**
 
